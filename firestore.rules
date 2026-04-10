@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: polls
+    // Fields:
+    //   - title: string (required)
+    //   - active: boolean
+    //
+    // Collection: polls/{pollId}/questions
+    // Fields:
+    //   - text: string (required)
+    //   - options: list of strings (required)
+    //   - order: number (required)
+    //
+    // Collection: votes
+    // Fields:
+    //   - pollId: string (required)
+    //   - questionId: string (required)
+    //   - optionIndex: number (required)
+    //   - userId: string (required)
+    //   - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidPoll(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 200;
+    }
+
+    function isValidQuestion(data) {
+      return data.text is string && data.text.size() > 0 && data.text.size() < 500 &&
+             data.options is list && data.options.size() >= 2 && data.options.size() <= 10 &&
+             data.order is number;
+    }
+
+    function isValidVote(data) {
+      return data.pollId is string &&
+             data.questionId is string &&
+             data.optionIndex is number &&
+             data.userId == request.auth.uid &&
+             (data.timestamp == request.time || data.timestamp is timestamp);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /polls/{pollId} {
+      allow read: if true; // Publicly readable for the presentation
+      allow write: if isAuthenticated(); // Only authenticated users can create/edit polls (admin)
+      
+      match /questions/{questionId} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+    }
+
+    match /votes/{voteId} {
+      // Allow reading votes for the real-time results
+      allow read: if true; 
+      
+      // Allow creating a vote if authenticated and valid
+      allow create: if isAuthenticated() && isValidVote(request.resource.data);
+      
+      // Allow users to update or delete their own votes
+      allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidVote(request.resource.data);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "AI Engagement Poll",
+  "description": "A real-time Mentimeter-style poll for gathering audience experience with AI during presentations.",
+  "requestFramePermissions": []
+}

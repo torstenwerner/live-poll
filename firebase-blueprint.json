@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "Poll": {
+      "title": "Poll",
+      "description": "A poll containing multiple questions.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Title of the poll" },
+        "active": { "type": "boolean", "description": "Whether the poll is currently active" }
+      },
+      "required": ["title"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "A single question within a poll.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The question text" },
+        "options": { "type": "array", "items": { "type": "string" }, "description": "Possible answers" },
+        "order": { "type": "number", "description": "Display order" }
+      },
+      "required": ["text", "options", "order"]
+    },
+    "Vote": {
+      "title": "Vote",
+      "description": "A single vote from a user.",
+      "type": "object",
+      "properties": {
+        "pollId": { "type": "string" },
+        "questionId": { "type": "string" },
+        "optionIndex": { "type": "number" },
+        "userId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["pollId", "questionId", "optionIndex", "userId", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/polls/{pollId}": {
+      "schema": "Poll",
+      "description": "The main poll document"
+    },
+    "/polls/{pollId}/questions/{questionId}": {
+      "schema": "Question",
+      "description": "Questions for a specific poll"
+    },
+    "/votes/{voteId}": {
+      "schema": "Vote",
+      "description": "Individual votes"
+    }
+  }
+}

@@ -49,6 +49,15 @@ service cloud.firestore {
              data.order is number;
     }
 
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email == "mail.twerner@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isGoogleUser() {
+      return isAuthenticated() && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+
     function isValidVote(data) {
       return data.pollId is string &&
              data.questionId is string &&
@@ -63,11 +72,11 @@ service cloud.firestore {
 
     match /polls/{pollId} {
       allow read: if true; // Publicly readable for the presentation
-      allow write: if isAuthenticated(); // Only authenticated users can create/edit polls (admin)
+      allow write: if isAdmin(); // Only admins can create/edit polls
       
       match /questions/{questionId} {
         allow read: if true;
-        allow write: if isAuthenticated();
+        allow write: if isAdmin();
       }
     }
 
@@ -79,8 +88,9 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidVote(request.resource.data);
       
       // Allow users to update or delete their own votes
+      // Also allow Google-authenticated users to delete any vote (as requested)
       allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidVote(request.resource.data);
-      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if (isAuthenticated() && isOwner(resource.data.userId)) || isGoogleUser();
     }
   }
 }

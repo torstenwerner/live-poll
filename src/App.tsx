@@ -10,6 +10,7 @@ import {
   onSnapshot, 
   setDoc, 
   addDoc, 
+  deleteDoc,
   query, 
   where, 
   serverTimestamp,
@@ -45,7 +46,10 @@ import {
   Users,
   QrCode,
   Share2,
-  Trophy
+  Trophy,
+  Trash2,
+  LogOut,
+  UserCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../components/ui/button';
@@ -63,6 +67,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 
 // --- Types ---
 
@@ -150,8 +163,10 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [voteError, setVoteError] = useState<string | null>(null);
   const [isQrOpen, setIsQrOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const appUrl = window.location.href;
+  const isGoogleUser = user?.providerData.some(p => p.providerId === 'google.com');
 
   // 1. Auth & Initialization
   useEffect(() => {
@@ -286,8 +301,55 @@ export default function App() {
     }
   };
 
+  const handleResetPoll = async () => {
+    if (!isGoogleUser) return;
+    
+    const confirmReset = window.confirm("Are you sure you want to delete ALL votes for this poll? This action cannot be undone.");
+    if (!confirmReset) return;
+
+    setIsResetting(true);
+    try {
+      const q = query(collection(db, 'votes'), where('pollId', '==', POLL_ID));
+      const snapshot = await getDocs(q);
+      
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      
+      await batch.commit();
+      toast.success("Poll has been reset successfully!");
+    } catch (err: any) {
+      console.error("Reset error:", err);
+      toast.error("Failed to reset poll. You might not have permission.");
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await auth.signOut();
+      window.location.reload();
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
+
   const ShareActions = () => (
     <div className="flex gap-2">
+      {isGoogleUser && (
+        <Button 
+          variant="destructive" 
+          size="sm" 
+          className="gap-2" 
+          onClick={handleResetPoll}
+          disabled={isResetting}
+        >
+          {isResetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+          Reset Poll
+        </Button>
+      )}
       <Dialog open={isQrOpen} onOpenChange={setIsQrOpen}>
         <DialogTrigger render={<Button variant="outline" size="sm" className="gap-2" />}>
           <QrCode className="w-4 h-4" />
@@ -404,18 +466,52 @@ export default function App() {
               <h1 className="font-bold text-xl tracking-tight">AI Engagement Poll</h1>
             </div>
             
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-              <TabsList className="bg-slate-100">
-                <TabsTrigger value="vote" className="gap-2">
-                  <Vote className="w-4 h-4" />
-                  <span className="hidden sm:inline">Vote</span>
-                </TabsTrigger>
-                <TabsTrigger value="results" className="gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Results</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex items-center gap-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+                <TabsList className="bg-slate-100">
+                  <TabsTrigger value="vote" className="gap-2">
+                    <Vote className="w-4 h-4" />
+                    <span className="hidden sm:inline">Vote</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="results" className="gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Results</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full border border-slate-200" />}>
+                  {user?.photoURL ? (
+                    <img src={user.photoURL} alt="Avatar" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
+                  ) : (
+                    <UserCircle className="w-5 h-5 text-slate-500" />
+                  )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{user?.displayName || (user?.isAnonymous ? 'Anonymous User' : 'User')}</span>
+                        <span className="text-xs text-slate-500 truncate">{user?.email || 'No email associated'}</span>
+                      </div>
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  {!isGoogleUser ? (
+                    <DropdownMenuItem onClick={handleGoogleSignIn} className="gap-2 text-blue-600 focus:text-blue-700">
+                      <Users className="w-4 h-4" />
+                      Sign in with Google
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-red-600 focus:text-red-700">
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
 

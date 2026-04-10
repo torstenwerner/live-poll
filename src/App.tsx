@@ -97,7 +97,7 @@ const QUESTIONS: Omit<Question, 'id'>[] = [
     order: 2
   },
   {
-    text: "Do you use an AI assistant like openclaw?",
+    text: "Do you use an AI assistant like OpenClaw?",
     options: ["Yes", "No"],
     order: 3
   }
@@ -286,6 +286,53 @@ export default function App() {
     }
   };
 
+  const ShareActions = () => (
+    <div className="flex gap-2">
+      <Dialog open={isQrOpen} onOpenChange={setIsQrOpen}>
+        <DialogTrigger render={<Button variant="outline" size="sm" className="gap-2" />}>
+          <QrCode className="w-4 h-4" />
+          Show QR
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-4xl font-black text-center tracking-tight">Scan to Join Live Poll</DialogTitle>
+            <DialogDescription className="text-center text-xl mt-2">
+              Point your camera at the code below to participate!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-4 sm:p-12 bg-white rounded-[3rem] border-4 border-slate-100 shadow-2xl">
+            <div className="bg-white p-8 rounded-3xl shadow-inner border-2 border-slate-50">
+              <QRCodeCanvas 
+                value={appUrl} 
+                size={600}
+                level="H"
+                includeMargin={false}
+                className="rounded-sm w-full max-w-[600px] h-auto"
+              />
+            </div>
+            <div className="mt-10 w-full text-center">
+              <p className="text-sm text-slate-400 font-mono break-all leading-relaxed bg-slate-50 p-5 rounded-2xl border border-slate-100 max-w-xl mx-auto">
+                {appUrl}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-center gap-6 pt-4">
+            <Button variant="outline" size="xl" onClick={handleShare} className="gap-3">
+              <Share2 className="w-6 h-6" />
+              Copy Link
+            </Button>
+            <Button size="xl" onClick={() => setIsQrOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <Button variant="outline" size="sm" className="gap-2" onClick={handleShare}>
+        <Share2 className="w-4 h-4" />
+        Share
+      </Button>
+    </div>
+  );
+
   if (authError) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 p-4">
@@ -382,22 +429,25 @@ export default function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-6"
               >
-                <div className="text-center mb-8">
-                  <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Have Your Say!</h2>
-                  <p className="text-slate-500">Share your experience with AI tools and see how you compare to others.</p>
-                  <AnimatePresence>
-                    {voteError && (
-                      <motion.p 
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="text-red-500 text-sm font-bold mt-2"
-                      >
-                        {voteError}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                  <div>
+                    <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Have Your Say!</h2>
+                    <p className="text-slate-500">Share your experience with AI tools and see how you compare to others.</p>
+                  </div>
+                  <ShareActions />
                 </div>
+                <AnimatePresence>
+                  {voteError && (
+                    <motion.p 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-red-500 text-sm font-bold text-center mb-4"
+                    >
+                      {voteError}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
 
                 <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1 max-w-2xl mx-auto">
                   {questions.map((q, idx) => {
@@ -500,50 +550,7 @@ export default function App() {
                       {new Set(votes.map(v => v.userId)).size} active participants
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <Dialog open={isQrOpen} onOpenChange={setIsQrOpen}>
-                      <DialogTrigger render={<Button variant="outline" size="sm" className="gap-2" />}>
-                        <QrCode className="w-4 h-4" />
-                        Show QR
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-lg">
-                        <DialogHeader>
-                          <DialogTitle className="text-2xl">Scan to Join</DialogTitle>
-                          <DialogDescription>
-                            Show this QR code to your audience so they can join the poll instantly.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                          <div className="bg-white p-4 rounded-xl shadow-inner border border-slate-50">
-                            <QRCodeCanvas 
-                              value={appUrl} 
-                              size={300}
-                              level="H"
-                              includeMargin={false}
-                              className="rounded-sm"
-                            />
-                          </div>
-                          <div className="mt-6 w-full text-center">
-                            <p className="text-[10px] text-slate-400 font-mono break-all leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">
-                              {appUrl}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex justify-center gap-3">
-                          <Button variant="outline" onClick={handleShare} className="gap-2">
-                            <Share2 className="w-4 h-4" />
-                            Copy Link
-                          </Button>
-                          <Button onClick={() => setIsQrOpen(false)}>Close</Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                    
-                    <Button variant="outline" size="sm" className="gap-2" onClick={handleShare}>
-                      <Share2 className="w-4 h-4" />
-                      Share
-                    </Button>
-                  </div>
+                  <ShareActions />
                 </div>
 
                 <div className="grid gap-8">

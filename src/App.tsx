@@ -53,6 +53,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Progress } from '../components/ui/progress';
 import { cn } from '../lib/utils';
+import { QRCodeCanvas } from 'qrcode.react';
+import { toast, Toaster } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
 
 // --- Types ---
 
@@ -139,6 +149,9 @@ export default function App() {
   const [votedQuestionIds, setVotedQuestionIds] = useState<Set<string>>(new Set());
   const [authError, setAuthError] = useState<string | null>(null);
   const [voteError, setVoteError] = useState<string | null>(null);
+  const [isQrOpen, setIsQrOpen] = useState(false);
+
+  const appUrl = window.location.href;
 
   // 1. Auth & Initialization
   useEffect(() => {
@@ -249,6 +262,30 @@ export default function App() {
     }
   };
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'AI Engagement Poll',
+          text: 'Join the live poll and share your AI experience!',
+          url: appUrl,
+        });
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Share error:", err);
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(appUrl);
+        toast.success("Link copied to clipboard!");
+      } catch (err) {
+        console.error("Clipboard error:", err);
+        toast.error("Failed to copy link.");
+      }
+    }
+  };
+
   if (authError) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 p-4">
@@ -308,6 +345,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <Toaster position="top-center" richColors />
       <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
         {/* Header */}
         <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
@@ -463,11 +501,45 @@ export default function App() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <QrCode className="w-4 h-4" />
-                      Show QR
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-2">
+                    <Dialog open={isQrOpen} onOpenChange={setIsQrOpen}>
+                      <DialogTrigger render={<Button variant="outline" size="sm" className="gap-2" />}>
+                        <QrCode className="w-4 h-4" />
+                        Show QR
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-lg">
+                        <DialogHeader>
+                          <DialogTitle className="text-2xl">Scan to Join</DialogTitle>
+                          <DialogDescription>
+                            Show this QR code to your audience so they can join the poll instantly.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                          <div className="bg-white p-4 rounded-xl shadow-inner border border-slate-50">
+                            <QRCodeCanvas 
+                              value={appUrl} 
+                              size={300}
+                              level="H"
+                              includeMargin={false}
+                              className="rounded-sm"
+                            />
+                          </div>
+                          <div className="mt-6 w-full text-center">
+                            <p className="text-[10px] text-slate-400 font-mono break-all leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">
+                              {appUrl}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex justify-center gap-3">
+                          <Button variant="outline" onClick={handleShare} className="gap-2">
+                            <Share2 className="w-4 h-4" />
+                            Copy Link
+                          </Button>
+                          <Button onClick={() => setIsQrOpen(false)}>Close</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    
+                    <Button variant="outline" size="sm" className="gap-2" onClick={handleShare}>
                       <Share2 className="w-4 h-4" />
                       Share
                     </Button>
